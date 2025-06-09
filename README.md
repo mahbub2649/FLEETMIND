@@ -3,8 +3,7 @@
 *Where Vector Math Meets Virtual Drones*
 
 A mesmerizing real-time simulation that brings Craig Reynolds' classic **boids algorithm** to life with a military twist! Watch hundreds of AI-powered UAVs dance through the sky using nothing but pure mathematics and emergent behavior.
-
-[![FleetMind Demo](https://img.youtube.com/vi/7OG-RNmxKbE/maxresdefault.jpg)](https://www.youtube.com/watch?v=7OG-RNmxKbE)
+[![Watch the FleetMind Demo](https://img.youtube.com/vi/7OG-RNmxKbE/maxresdefault.jpg)](https://www.youtube.com/watch?v=7OG-RNmxKbE "Click to watch FleetMind in action!")
 
 ## The Math Behind the Magic ✨
 
