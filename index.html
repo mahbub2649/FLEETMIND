@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hierarchical Swarm AI UAV Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #0c1445, #1a2b5c);
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .controls {
+            width: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 2px solid #00ffff;
+        }
+        
+        .simulation-area {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at center, #1a2b5c, #0c1445);
+        }
+        
+        #canvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+        
+        .control-group h3 {
+            margin: 0 0 10px 0;
+            color: #00ffff;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        
+        .control-item {
+            margin-bottom: 10px;
+        }
+        
+        .control-item label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #cccccc;
+        }
+        
+        .control-item input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        .control-item input[type="number"] {
+            width: 60px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #00ffff;
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .control-item button {
+            background: linear-gradient(45deg, #00ffff, #0099ff);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .control-item button:hover {
+            background: linear-gradient(45deg, #0099ff, #00ffff);
+            transform: translateY(-1px);
+        }
+        
+        .status-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #00ffff;
+            min-width: 200px;
+        }
+        
+        .hierarchy-display {
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .commander { color: #ff6b6b; }
+        .squad-leader { color: #4ecdc4; }
+        .drone { color: #95e1d3; }
+        
+        .legend {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <div class="control-group">
+                <h3>Swarm Structure</h3>
+                <div class="control-item">
+                    <label>Total Drones: <span id="droneCountDisplay">50</span></label>
+                    <input type="range" id="droneCount" min="10" max="200" value="50">
+                </div>
+                <div class="control-item">
+                    <label>Squads: <span id="squadCountDisplay">5</span></label>
+                    <input type="range" id="squadCount" min="2" max="10" value="5">
+                </div>
+                <div class="control-item">
+                    <label>Commanders: <span id="commanderCountDisplay">2</span></label>
+                    <input type="range" id="commanderCount" min="1" max="5" value="2">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Behavior Parameters</h3>
+                <div class="control-item">
+                    <label>Cohesion: <span id="cohesionDisplay">0.5</span></label>
+                    <input type="range" id="cohesion" min="0" max="2" step="0.1" value="0.5">
+                </div>
+                <div class="control-item">
+                    <label>Separation: <span id="separationDisplay">1.0</span></label>
+                    <input type="range" id="separation" min="0" max="3" step="0.1" value="1.0">
+                </div>
+                <div class="control-item">
+                    <label>Alignment: <span id="alignmentDisplay">0.8</span></label>
+                    <input type="range" id="alignment" min="0" max="2" step="0.1" value="0.8">
+                </div>
+                <div class="control-item">
+                    <label>Command Authority: <span id="authorityDisplay">1.5</span></label>
+                    <input type="range" id="authority" min="0.5" max="3" step="0.1" value="1.5">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Mission Control</h3>
+                <div class="control-item">
+                    <button onclick="setMission('patrol')">Patrol</button>
+                    <button onclick="setMission('search')">Search & Rescue</button>
+                    <button onclick="setMission('formation')">Formation Flight</button>
+                    <button onclick="setMission('scatter')">Scatter</button>
+                </div>
+                <div class="control-item">
+                    <label>Speed: <span id="speedDisplay">2</span></label>
+                    <input type="range" id="speed" min="0.5" max="5" step="0.1" value="2">
+                </div>
+                <div class="control-item">
+                    <label>Detection Range: <span id="rangeDisplay">100</span></label>
+                    <input type="range" id="detectionRange" min="50" max="200" step="10" value="100">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Environment</h3>
+                <div class="control-item">
+                    <button onclick="addObstacle()">Add Obstacle</button>
+                    <button onclick="clearObstacles()">Clear Obstacles</button>
+                </div>
+                <div class="control-item">
+                    <button onclick="addTarget()">Add Target</button>
+                    <button onclick="clearTargets()">Clear Targets</button>
+                </div>
+                <div class="control-item">
+                    <button onclick="togglePause()">Pause/Resume</button>
+                    <button onclick="resetSimulation()">Reset</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="simulation-area">
+            <canvas id="canvas"></canvas>
+            
+            <div class="status-panel">
+                <div class="hierarchy-display" id="hierarchyDisplay"></div>
+            </div>
+            
+            <div class="legend">
+                <div class="commander">● Commander</div>
+                <div class="squad-leader">● Squad Leader</div>
+                <div class="drone">● Drone</div>
+                <div style="color: #ffff00;">■ Target</div>
+                <div style="color: #ff4444;">■ Obstacle</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class Vector2 {
+            constructor(x = 0, y = 0) {
+                this.x = x;
+                this.y = y;
+            }
+            
+            add(v) { return new Vector2(this.x + v.x, this.y + v.y); }
+            subtract(v) { return new Vector2(this.x - v.x, this.y - v.y); }
+            multiply(scalar) { return new Vector2(this.x * scalar, this.y * scalar); }
+            divide(scalar) { return new Vector2(this.x / scalar, this.y / scalar); }
+            magnitude() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+            normalize() {
+                const mag = this.magnitude();
+                return mag > 0 ? this.divide(mag) : new Vector2(0, 0);
+            }
+            distance(v) { return this.subtract(v).magnitude(); }
+            limit(max) {
+                if (this.magnitude() > max) {
+                    return this.normalize().multiply(max);
+                }
+                return new Vector2(this.x, this.y);
+            }
+        }
+
+        class UAV {
+            constructor(x, y, type = 'drone', id = 0) {
+                this.position = new Vector2(x, y);
+                this.velocity = new Vector2(Math.random() - 0.5, Math.random() - 0.5);
+                this.acceleration = new Vector2(0, 0);
+                this.type = type; // 'commander', 'squad-leader', 'drone'
+                this.id = id;
+                this.maxSpeed = 2;
+                this.maxForce = 0.1;
+                this.size = type === 'commander' ? 8 : type === 'squad-leader' ? 6 : 4;
+                this.color = type === 'commander' ? '#ff6b6b' : type === 'squad-leader' ? '#4ecdc4' : '#95e1d3';
+                this.squad = -1;
+                this.commander = -1;
+                this.mission = 'patrol';
+                this.target = null;
+                this.lastCommandTime = 0;
+                this.subordinates = [];
+                this.leader = null;
+            }
+            
+            update() {
+                this.velocity = this.velocity.add(this.acceleration);
+                this.velocity = this.velocity.limit(this.maxSpeed * params.speed);
+                this.position = this.position.add(this.velocity);
+                this.acceleration = this.acceleration.multiply(0);
+                
+                // Wrap around screen
+                if (this.position.x < 0) this.position.x = canvas.width;
+                if (this.position.x > canvas.width) this.position.x = 0;
+                if (this.position.y < 0) this.position.y = canvas.height;
+                if (this.position.y > canvas.height) this.position.y = 0;
+            }
+            
+            applyForce(force) {
+                this.acceleration = this.acceleration.add(force);
+            }
+            
+            seek(target) {
+                const desired = target.subtract(this.position).normalize().multiply(this.maxSpeed);
+                const steering = desired.subtract(this.velocity).limit(this.maxForce);
+                return steering;
+            }
+            
+            flock(uavs) {
+                const cohesion = this.cohesion(uavs).multiply(params.cohesion);
+                const separation = this.separation(uavs).multiply(params.separation);
+                const alignment = this.alignment(uavs).multiply(params.alignment);
+                const hierarchy = this.followHierarchy(uavs).multiply(params.authority);
+                
+                this.applyForce(cohesion);
+                this.applyForce(separation);
+                this.applyForce(alignment);
+                this.applyForce(hierarchy);
+            }
+            
+            cohesion(uavs) {
+                const perceptionRadius = 50;
+                let total = 0;
+                let center = new Vector2(0, 0);
+                
+                for (let other of uavs) {
+                    const distance = this.position.distance(other.position);
+                    if (other !== this && distance < perceptionRadius) {
+                        center = center.add(other.position);
+                        total++;
+                    }
+                }
+                
+                if (total > 0) {
+                    center = center.divide(total);
+                    return this.seek(center);
+                }
+                return new Vector2(0, 0);
+            }
+            
+            separation(uavs) {
+                const perceptionRadius = 25;
+                let total = 0;
+                let steering = new Vector2(0, 0);
+                
+                for (let other of uavs) {
+                    const distance = this.position.distance(other.position);
+                    if (other !== this && distance < perceptionRadius && distance > 0) {
+                        let diff = this.position.subtract(other.position);
+                        diff = diff.normalize().divide(distance); // Weight by distance
+                        steering = steering.add(diff);
+                        total++;
+                    }
+                }
+                
+                if (total > 0) {
+                    steering = steering.divide(total);
+                    steering = steering.normalize().multiply(this.maxSpeed);
+                    steering = steering.subtract(this.velocity);
+                    steering = steering.limit(this.maxForce);
+                }
+                return steering;
+            }
+            
+            alignment(uavs) {
+                const perceptionRadius = 50;
+                let total = 0;
+                let average = new Vector2(0, 0);
+                
+                for (let other of uavs) {
+                    const distance = this.position.distance(other.position);
+                    if (other !== this && distance < perceptionRadius) {
+                        average = average.add(other.velocity);
+                        total++;
+                    }
+                }
+                
+                if (total > 0) {
+                    average = average.divide(total);
+                    average = average.normalize().multiply(this.maxSpeed);
+                    const steering = average.subtract(this.velocity);
+                    return steering.limit(this.maxForce);
+                }
+                return new Vector2(0, 0);
+            }
+            
+            followHierarchy(uavs) {
+                if (this.type === 'commander') return new Vector2(0, 0);
+                
+                let steering = new Vector2(0, 0);
+                
+                // Drones follow squad leaders, squad leaders follow commanders
+                for (let other of uavs) {
+                    if (this.type === 'drone' && other.type === 'squad-leader' && other.squad === this.squad) {
+                        const distance = this.position.distance(other.position);
+                        if (distance > 30 && distance < 100) {
+                            steering = steering.add(this.seek(other.position));
+                        }
+                    } else if (this.type === 'squad-leader' && other.type === 'commander' && other.id === this.commander) {
+                        const distance = this.position.distance(other.position);
+                        if (distance > 60 && distance < 150) {
+                            steering = steering.add(this.seek(other.position));
+                        }
+                    }
+                }
+                
+                return steering;
+            }
+            
+            avoidObstacles() {
+                for (let obstacle of obstacles) {
+                    const distance = this.position.distance(obstacle);
+                    if (distance < 40) {
+                        const avoidance = this.position.subtract(obstacle).normalize().multiply(2);
+                        this.applyForce(avoidance);
+                    }
+                }
+            }
+            
+            seekTargets() {
+                for (let target of targets) {
+                    const distance = this.position.distance(target);
+                    if (distance < params.detectionRange) {
+                        const seekForce = this.seek(target).multiply(0.3);
+                        this.applyForce(seekForce);
+                        
+                        if (distance < 15) {
+                            // Target acquired - remove it
+                            const index = targets.indexOf(target);
+                            if (index > -1) targets.splice(index, 1);
+                        }
+                    }
+                }
+            }
+            
+            executeMission() {
+                switch(currentMission) {
+                    case 'search':
+                        this.seekTargets();
+                        break;
+                    case 'formation':
+                        if (this.type === 'drone') {
+                            // Form tight formations around squad leaders
+                            const formationRadius = 40;
+                            const angle = (this.id % 8) * (Math.PI * 2 / 8);
+                            const formationPos = new Vector2(
+                                Math.cos(angle) * formationRadius,
+                                Math.sin(angle) * formationRadius
+                            );
+                            // Find squad leader
+                            for (let uav of uavs) {
+                                if (uav.type === 'squad-leader' && uav.squad === this.squad) {
+                                    const targetPos = uav.position.add(formationPos);
+                                    this.applyForce(this.seek(targetPos).multiply(0.8));
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    case 'scatter':
+                        // Repel from all other UAVs
+                        for (let other of uavs) {
+                            if (other !== this) {
+                                const distance = this.position.distance(other.position);
+                                if (distance < 80) {
+                                    const repel = this.position.subtract(other.position).normalize().multiply(0.5);
+                                    this.applyForce(repel);
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
+            
+            render(ctx) {
+                ctx.save();
+                ctx.translate(this.position.x, this.position.y);
+                
+                // Rotate to face velocity direction
+                const angle = Math.atan2(this.velocity.y, this.velocity.x);
+                ctx.rotate(angle + Math.PI / 2);
+                
+                ctx.fillStyle = this.color;
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 1;
+                
+                // Draw UAV shape
+                ctx.beginPath();
+                ctx.moveTo(0, -this.size);
+                ctx.lineTo(-this.size * 0.7, this.size);
+                ctx.lineTo(this.size * 0.7, this.size);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // Draw hierarchy indicators
+                if (this.type === 'commander') {
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.size + 3, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (this.type === 'squad-leader') {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.size + 2, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        // Global variables
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let uavs = [];
+        let obstacles = [];
+        let targets = [];
+        let currentMission = 'patrol';
+        let isPaused = false;
+        
+        const params = {
+            droneCount: 50,
+            squadCount: 5,
+            commanderCount: 2,
+            cohesion: 0.5,
+            separation: 1.0,
+            alignment: 0.8,
+            authority: 1.5,
+            speed: 2,
+            detectionRange: 100
+        };
+
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+
+        function initializeSwarm() {
+            uavs = [];
+            
+            // Create commanders
+            for (let i = 0; i < params.commanderCount; i++) {
+                const commander = new UAV(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height,
+                    'commander',
+                    i
+                );
+                uavs.push(commander);
+            }
+            
+            // Create squad leaders
+            const squadLeadersPerCommander = Math.ceil(params.squadCount / params.commanderCount);
+            let squadId = 0;
+            for (let c = 0; c < params.commanderCount; c++) {
+                for (let s = 0; s < squadLeadersPerCommander && squadId < params.squadCount; s++) {
+                    const squadLeader = new UAV(
+                        Math.random() * canvas.width,
+                        Math.random() * canvas.height,
+                        'squad-leader',
+                        squadId
+                    );
+                    squadLeader.squad = squadId;
+                    squadLeader.commander = c;
+                    uavs.push(squadLeader);
+                    squadId++;
+                }
+            }
+            
+            // Create drones
+            const dronesPerSquad = Math.floor((params.droneCount - params.commanderCount - params.squadCount) / params.squadCount);
+            let droneId = 0;
+            for (let s = 0; s < params.squadCount; s++) {
+                for (let d = 0; d < dronesPerSquad; d++) {
+                    const drone = new UAV(
+                        Math.random() * canvas.width,
+                        Math.random() * canvas.height,
+                        'drone',
+                        droneId++
+                    );
+                    drone.squad = s;
+                    uavs.push(drone);
+                }
+            }
+            
+            // Add remaining drones to fill quota
+            while (uavs.length < params.droneCount) {
+                const drone = new UAV(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height,
+                    'drone',
+                    droneId++
+                );
+                drone.squad = droneId % params.squadCount;
+                uavs.push(drone);
+            }
+        }
+
+        function updateHierarchyDisplay() {
+            const display = document.getElementById('hierarchyDisplay');
+            const commanders = uavs.filter(u => u.type === 'commander').length;
+            const squadLeaders = uavs.filter(u => u.type === 'squad-leader').length;
+            const drones = uavs.filter(u => u.type === 'drone').length;
+            
+            display.innerHTML = `
+                <div><strong>Hierarchy Status</strong></div>
+                <div class="commander">Commanders: ${commanders}</div>
+                <div class="squad-leader">Squad Leaders: ${squadLeaders}</div>
+                <div class="drone">Drones: ${drones}</div>
+                <div style="margin-top: 10px;"><strong>Mission:</strong> ${currentMission.toUpperCase()}</div>
+                <div><strong>Targets:</strong> ${targets.length}</div>
+                <div><strong>Obstacles:</strong> ${obstacles.length}</div>
+            `;
+        }
+
+        function animate() {
+            if (!isPaused) {
+                // Clear canvas
+                ctx.fillStyle = 'rgba(12, 20, 69, 0.1)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw obstacles
+                ctx.fillStyle = '#ff4444';
+                for (let obstacle of obstacles) {
+                    ctx.fillRect(obstacle.x - 15, obstacle.y - 15, 30, 30);
+                }
+                
+                // Draw targets
+                ctx.fillStyle = '#ffff00';
+                for (let target of targets) {
+                    ctx.fillRect(target.x - 8, target.y - 8, 16, 16);
+                }
+                
+                // Update and render UAVs
+                for (let uav of uavs) {
+                    uav.flock(uavs);
+                    uav.avoidObstacles();
+                    uav.executeMission();
+                    uav.update();
+                    uav.render(ctx);
+                }
+                
+                updateHierarchyDisplay();
+            }
+            requestAnimationFrame(animate);
+        }
+
+        // Control handlers
+        function updateParams() {
+            params.droneCount = parseInt(document.getElementById('droneCount').value);
+            params.squadCount = parseInt(document.getElementById('squadCount').value);
+            params.commanderCount = parseInt(document.getElementById('commanderCount').value);
+            params.cohesion = parseFloat(document.getElementById('cohesion').value);
+            params.separation = parseFloat(document.getElementById('separation').value);
+            params.alignment = parseFloat(document.getElementById('alignment').value);
+            params.authority = parseFloat(document.getElementById('authority').value);
+            params.speed = parseFloat(document.getElementById('speed').value);
+            params.detectionRange = parseFloat(document.getElementById('detectionRange').value);
+            
+            // Update displays
+            document.getElementById('droneCountDisplay').textContent = params.droneCount;
+            document.getElementById('squadCountDisplay').textContent = params.squadCount;
+            document.getElementById('commanderCountDisplay').textContent = params.commanderCount;
+            document.getElementById('cohesionDisplay').textContent = params.cohesion;
+            document.getElementById('separationDisplay').textContent = params.separation;
+            document.getElementById('alignmentDisplay').textContent = params.alignment;
+            document.getElementById('authorityDisplay').textContent = params.authority;
+            document.getElementById('speedDisplay').textContent = params.speed;
+            document.getElementById('rangeDisplay').textContent = params.detectionRange;
+        }
+
+        function setMission(mission) {
+            currentMission = mission;
+        }
+
+        function addObstacle() {
+            obstacles.push(new Vector2(
+                Math.random() * canvas.width,
+                Math.random() * canvas.height
+            ));
+        }
+
+        function clearObstacles() {
+            obstacles = [];
+        }
+
+        function addTarget() {
+            targets.push(new Vector2(
+                Math.random() * canvas.width,
+                Math.random() * canvas.height
+            ));
+        }
+
+        function clearTargets() {
+            targets = [];
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+        }
+
+        function resetSimulation() {
+            obstacles = [];
+            targets = [];
+            initializeSwarm();
+        }
+
+        // Event listeners
+        document.getElementById('droneCount').addEventListener('input', () => {
+            updateParams();
+            initializeSwarm();
+        });
+
+        document.getElementById('squadCount').addEventListener('input', () => {
+            updateParams();
+            initializeSwarm();
+        });
+
+        document.getElementById('commanderCount').addEventListener('input', () => {
+            updateParams();
+            initializeSwarm();
+        });
+
+        ['cohesion', 'separation', 'alignment', 'authority', 'speed', 'detectionRange'].forEach(param => {
+            document.getElementById(param).addEventListener('input', updateParams);
+        });
+
+        // Click to add targets
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            targets.push(new Vector2(x, y));
+        });
+
+        // Initialize
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        updateParams();
+        initializeSwarm();
+        animate();
+    </script>
+</body>
+</html>
